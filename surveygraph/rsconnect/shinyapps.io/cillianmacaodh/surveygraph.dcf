@@ -1,0 +1,13 @@
+name: surveygraph
+title: surveygraph
+username:
+account: cillianmacaodh
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 9071597
+bundleId: 7199040
+url: https://cillianmacaodh.shinyapps.io/surveygraph/
+when: 1683720001.08339
+lastSyncTime: 1683720001.0834
+asMultiple: FALSE
+asStatic: FALSE

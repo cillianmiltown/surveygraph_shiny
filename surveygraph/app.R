@@ -12,6 +12,7 @@ library(shinydashboard)
 library(foreign)
 library(dplyr)
 library(surveygraphr)
+library(igraph)
 
 load("ICSMP_500.RData")
 
@@ -37,7 +38,11 @@ ui <- dashboardPage(
       tabItem(tabName = "simulateddata",
               fluidRow(
                 
-                box(verbatimTextOutput("code1"))
+                box(
+                  sliderInput("polarization", "Polarization:",
+                              min = 0, max = 4,
+                              value = 0.5, step = 0.01),
+                  verbatimTextOutput("code1"))
                 ,
                 box(
                   plotOutput("plot1")
@@ -164,17 +169,21 @@ server <- function(input, output, session) {
   
   
   make_a <- reactive({input$inNumber})
+  make_polarization <- reactive({input$polarization})
   # get data object
   get_data<-reactive({
-    rm(d)
+    #rm(d)
     if(!exists(input$dataset)) return() # if no upload
     
     check<-function(x){is.null(x) || x==""}
     if(check(input$dataset)) return()
     
+    polarization <- make_polarization()
+    
     d <- setdiff(
       names(input),
-      c("sidebarCollapsed", "inNumber", "sidebarItemExpanded", "dataset", "rm","add", "file1")
+      c("sidebarCollapsed", "inNumber", "sidebarItemExpanded", "dataset"
+        , "rm","add", "file1", "polarization")
     )
     
     
@@ -216,6 +225,7 @@ server <- function(input, output, session) {
     
     
     obj
+    
   })
   
   get_data2 <- reactive({
@@ -236,6 +246,7 @@ server <- function(input, output, session) {
     
   })
   
+  #### output head ####
   output$datahead <- renderPrint({
     obj <- get_data()
     S <- obj$data
@@ -253,6 +264,7 @@ server <- function(input, output, session) {
     
   })
   
+  #### output plot ####
     output$plot2 <- renderPlot({
       
       
@@ -292,13 +304,43 @@ server <- function(input, output, session) {
       #   ,as.numeric(unlist(S[3]))
       # )
       #S <- as.numeric(S[1])
-      edgelist <- surveygraphr::listgraph(S)
-      edgelist
-      g1 <- igraph::make_graph(edges=edgelist, directed=FALSE)
+      S[] <- lapply(S, as.numeric)
+      
+      S <- na.omit(S)
+      
+      (S[,1])
+      
+      names1 <- data.frame(id=c(1:length(S[,1])), group=S[,1])
+      names2 <- data.frame(id=c(1:length(S)))
+      
+      edgelists <- surveygraphr::graph_edgelists(S)
+      
+      g1 <- igraph::graph.data.frame(edgelists[[1]], vertices=names1, directed=FALSE)
+      g2 <- igraph::graph.data.frame(edgelists[[2]], vertices=names2, directed=FALSE)
       
       
-      plot(g1, vertex.size=5, vertex.label=NA)
+      V(g1)$group
+      V(g1)$color <- ifelse(V(g1)$group == 10, "blue", "red")
+      V(g1)$color
       
+      isolated_nodes1 <- which(degree(g1)==0)
+      isolated_nodes2 <- which(degree(g2)==0)
+      
+      g1c <- delete.vertices(g1, isolated_nodes1)
+      g2c <- delete.vertices(g2, isolated_nodes2)
+      
+      E(g2c)$label= E(g2c)$weight
+      
+      par(mfrow=c(1,2), mar=c(1,1,1,1))
+      plot(g1c, vertex.size=2, vertex.label=NA, edge.width=0.2
+           #, layout=layout.fruchterman.reingold
+           , main="respondents")
+      plot(g2c, vertex.size=10, edge.width=1.0, layout=layout.fruchterman.reingold, main="items")
+      # g1 <- igraph::make_graph(edges=edgelist, directed=FALSE)
+      # 
+      # 
+      # plot(g1, vertex.size=5, vertex.label=NA)
+      # 
     #   
     #     # generate bins based on input$bins from ui.R
     #     x    <- faithful[, 2]
@@ -310,22 +352,75 @@ server <- function(input, output, session) {
     #          main = 'Histogram of waiting times')
     })
     
+  #### Simulated Output ####
+  
     output$plot1 <- renderPlot({
-      S1 <- surveygraphr::gensurvey(200,25)
-      results <- surveygraphr::exploregraph(S1)
-      edgelist <- surveygraphr::listgraph(S1)
-      g <- igraph::make_graph(edges=edgelist, directed=FALSE)
-      plot(g, vertex.size=5, vertex.label=NA)
+      
+      #rm(list=ls())
+      
+      # S1 <- surveygraphr::gensurvey(200,25)
+      # results <- surveygraphr::exploregraph(S1)
+      # edgelist <- surveygraphr::listgraph(S1)
+      # g <- igraph::make_graph(edges=edgelist, directed=FALSE)
+      # plot(g, vertex.size=5, vertex.label=NA)
+      
+      polarization <- make_polarization()
+      
+      S1 <- surveygraphr::generate_survey_polarised(m=300, n=15, polarisation=polarization)
+      
+      names1 <- data.frame(id=c(1:length(S1$X1)), group=S1$X1)
+      names2 <- data.frame(id=c(1:length(S1)))
+      
+      edgelists <- surveygraphr::graph_edgelists(S1)
+      
+      g1 <- igraph::graph.data.frame(edgelists[[1]], vertices=names1, directed=FALSE)
+      g2 <- igraph::graph.data.frame(edgelists[[2]], vertices=names2, directed=FALSE)
+      
+      V(g1)$color <- ifelse(V(g1)$group == 1, "blue", "red")
+      
+      isolated_nodes1 <- which(degree(g1)==0)
+      isolated_nodes2 <- which(degree(g2)==0)
+      
+      g1c <- delete.vertices(g1, isolated_nodes1)
+      g2c <- delete.vertices(g2, isolated_nodes2)
+      
+      E(g2c)$label= E(g2c)$weight
+      
+      par(mfrow=c(1,2), mar=c(1,1,1,1))
+      plot(g1c, vertex.size=2, vertex.label=NA, edge.width=0.2, layout=layout.fruchterman.reingold, main="respondents")
+      plot(g2c, vertex.size=10, edge.width=1.0, layout=layout.fruchterman.reingold, main="items")
+      
+      
       
     })
     
     output$code1 <- renderPrint({
-      print('S1 <- surveygraphr::gensurvey(200,25)')
-      print('results <- surveygraphr::exploregraph(S1)')
-      print('edgelist <- surveygraphr::listgraph(S1)')
-      print('g <- igraph::make_graph(edges=edgelist, directed=FALSE)')
-      print('plot(g, vertex.size=5, vertex.label=NA)')
-      
+      cat(
+      "S1 <- surveygraphr::generate_survey_polarised(m=300, n=15, polarisation=.5)",
+      "",
+      "names1 <- data.frame(id=c(1:length(S1$X1)), group=S1$X1)",
+      "names2 <- data.frame(id=c(1:length(S1)))",
+      "",
+      "edgelists <- surveygraphr::graph_edgelists(S1)",
+      "",
+      "g1 <- igraph::graph.data.frame(edgelists[[1]], vertices=names1, directed=FALSE)",
+      "g2 <- igraph::graph.data.frame(edgelists[[2]], vertices=names2, directed=FALSE)",
+      "",
+      "V(g1)$color <- ifelse(V(g1)$group == 1, 'blue', 'red')",
+      "",
+      "isolated_nodes1 <- which(degree(g1)==0)",
+      "isolated_nodes2 <- which(degree(g2)==0)",
+      "",
+      "g1c <- delete.vertices(g1, isolated_nodes1)",
+      "g2c <- delete.vertices(g2, isolated_nodes2)",
+      "",
+      "E(g2c)$label= E(g2c)$weight",
+      "",
+      "par(mfrow=c(1,2), mar=c(1,1,1,1))",
+      "plot(g1c, vertex.size=2, vertex.label=NA, edge.width=0.2, layout=layout.fruchterman.reingold, main='respondents'')",
+      "plot(g2c, vertex.size=10, edge.width=1.0, layout=layout.fruchterman.reingold, main='items')",
+      sep="\n"
+      )
     })
     
     

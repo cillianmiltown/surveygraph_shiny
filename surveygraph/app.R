@@ -15,6 +15,8 @@ library(surveygraphr)
 
 load("ICSMP_500.RData")
 
+
+
 # Define UI for application that draws a histogram
 ui <- dashboardPage(
   dashboardHeader(title = "SurveyGraph"),
@@ -31,7 +33,7 @@ ui <- dashboardPage(
   dashboardBody(
     tabItems(
       
-      ##### Plot (First tab) #####
+      ##### Simulated Data (First tab) #####
       tabItem(tabName = "simulateddata",
               fluidRow(
                 
@@ -43,7 +45,7 @@ ui <- dashboardPage(
                 )
               )
       ),
-      ##### Raw Tweets (Second tab) #####
+      ##### Uploaded (SPSS) Data (Second tab) #####
       tabItem(tabName = "uploadeddata",
               fluidRow(
                 box(
@@ -55,22 +57,34 @@ ui <- dashboardPage(
                   
                   # create a dropdown menu for selecting the dataset to be used
                   selectInput("dataset","Data:",
-                              choices =list(ICSMP_500 = "ICSMP_500",
+                              choices =list(
                                             COVID_measures = "COVID_measures",
+                                            ICSMP_500 = "ICSMP_500",
                                             uploaded_file = "inFile"), selected=NULL),
                   # create a dropdown menu for selecting variable 1
-                  selectInput("v1","Variable 1", choices = NULL),
-                  # create a dropdown menu for selecting variable 2
-                  selectInput("v2","Variable 2", choices = NULL),
-                  # create a dropdown menu for selecting variable 3
-                  selectInput("v3","Variable 3", choices = NULL), #,
                   
-                  # create a dropdown menu for selecting variable 3
-                  selectInput("v4","Variable 4", choices = NULL), #,
                   
-                  # create a dropdown menu for selecting variable 3
-                  selectInput("v5","Variable 5", choices = NULL), #,
                   
+                  selectizeInput("v1", "Variable 1", choices = NULL),
+                  # # create a dropdown menu for selecting variable 2
+                  # selectInput("v2","Variable 2", choices = NULL),
+                  # # create a dropdown menu for selecting variable 3
+                  # selectInput("v3","Variable 3", choices = NULL), #,
+                  # 
+                  # # create a dropdown menu for selecting variable 3
+                  # selectInput("v4","Variable 4", choices = NULL), #,
+                  # 
+                  # # create a dropdown menu for selecting variable 3
+                  # selectInput("v5","Variable 5", choices = NULL), #,
+                  
+                  
+                  h3("Add additional variables:"),
+                  
+                  actionButton(inputId = "rm", label = "-"),
+                  actionButton(inputId = "add", label = "+"),
+                  
+                  
+                  h3("Select Number of Participants"),
                   numericInput("inNumber", "How many participants", 20)
                   
                   
@@ -98,6 +112,40 @@ server <- function(input, output, session) {
     inFile<<-upload_data()
   })
   
+  input_counter <- reactiveVal(0)
+  
+  observeEvent(input$add, {
+    if(!exists(input$dataset)) return() #make sure upload exists
+    var.opts<-colnames(get(input$dataset))
+    input_counter(input_counter() + 1)
+    insertUI(
+      selector = "#rm", where = "beforeBegin",
+      ui = div(id = paste0("selectize_div", input_counter())
+               , selectizeInput(
+                 paste0("v", (input_counter())+1)
+                 , label = paste("Variable ", (input_counter()+1))
+                 , choices = var.opts))
+    )
+  })
+  observeEvent(input$rm, {
+    removeUI(
+      selector = paste0("#selectize_div", input_counter())
+    )
+    input_counter(input_counter() - 1)
+  })
+  
+  observe({
+    print(names(input))
+    #print(input$a1)
+    print(
+      setdiff(
+        names(input),
+        c("sidebarCollapsed", "inNumber", "sidebarItemExpanded", "dataset", "rm","add", "file1")
+      )
+    )
+  })
+  
+  
   #output$selected_variables <- renderPrint()
   
   
@@ -106,12 +154,15 @@ server <- function(input, output, session) {
     #browser()
     if(!exists(input$dataset)) return() #make sure upload exists
     var.opts<-colnames(get(input$dataset))
-    updateSelectInput(session, "v1", choices = var.opts)
-    updateSelectInput(session, "v2", choices = var.opts)
-    updateSelectInput(session, "v3", choices = var.opts)
-    updateSelectInput(session, "v4", choices = var.opts)
-    updateSelectInput(session, "v5", choices = var.opts)
+    updateSelectizeInput(session, "v1", choices = var.opts)
+    # if(is.null(input$v2)==FALSE) {updateSelectizeInput(session, "v2", choices = var.opts)}
+    # if(is.null(input$v3)==FALSE) {updateSelectizeInput(session, "v3", choices = var.opts)}
+    # if(is.null(input$v4)==FALSE) {updateSelectizeInput(session, "v4", choices = var.opts)}
+    # if(is.null(input$v5)==FALSE) {updateSelectizeInput(session, "v5", choices = var.opts)}
+    
   })
+  
+  
   
   make_a <- reactive({input$inNumber})
   # get data object
@@ -122,12 +173,37 @@ server <- function(input, output, session) {
     check<-function(x){is.null(x) || x==""}
     if(check(input$dataset)) return()
     
+    d <- setdiff(
+      names(input),
+      c("sidebarCollapsed", "inNumber", "sidebarItemExpanded", "dataset", "rm","add", "file1")
+    )
+    
+    
+    obj_vx_input_fun <- function(x){
+      noquote(paste(noquote(d[x]),"=", "input$", noquote(d[x]),sep = ""))
+      }
+    
+    inputted_vector <- sapply(1:length(d), obj_vx_input_fun)
+    
+    inputted_variables_fun <- function(x){
+      eval(parse(text=inputted_vector[x]))}
+    
+    
     obj<-list(data=get(input$dataset),
-              v1=input$v1,
-              v2=input$v2,
-              v3=input$v3,
-              v4=input$v4,
-              v5=input$v5
+              
+              # setdiff(
+              #   names(input),
+              #   c("sidebarCollapsed", "inNumber", "sidebarItemExpanded", "dataset", "rm","add", "file1")
+              # )
+
+              
+              
+              sapply(1:length(d), inputted_variables_fun)
+              # if(is.null(input$v1)==FALSE){v1=input$v1},
+              # if(is.null(input$v2)==FALSE){v2=input$v2},
+              # if(is.null(input$v3)==FALSE){v3=input$v3},
+              # if(is.null(input$v4)==FALSE){v4=input$v4},
+              # if(is.null(input$v5)==FALSE){v5=input$v5}
     )
     
     #require all to be set to proceed
@@ -140,6 +216,12 @@ server <- function(input, output, session) {
     if(check(obj)) return()
     
     
+    obj
+  })
+  
+  get_data2 <- reactive({
+    
+    obj <- list(data = get(input$dataset))
     obj
   })
   
@@ -157,50 +239,46 @@ server <- function(input, output, session) {
   
   output$datahead <- renderPrint({
     obj <- get_data()
-
-    #S <- as.data.frame(unlist(obj$data))
-    
     S <- obj$data
-    
-    # S <- cbind.data.frame(
-    #   as.numeric(unlist(S[1]))
-    #   ,as.numeric(unlist(S[2]))
-    #   ,as.numeric(unlist(S[3]))
-    # )
-    # S
-    
-    
-    c(obj$v1,obj$v2,obj$v3,obj$v4,obj$v5)
-    
-    S <- S %>% select(c(obj$v1,obj$v2,obj$v3,obj$v4,obj$v5))
-    S <- cbind.data.frame(
-      as.numeric(unlist(S[1]))
-      ,as.numeric(unlist(S[2]))
-      ,as.numeric(unlist(S[3]))
-      ,as.numeric(unlist(S[4]))
-      ,as.numeric(unlist(S[5]))
+    d <- setdiff(
+      names(input),
+      c("sidebarCollapsed", "inNumber", "sidebarItemExpanded", "dataset", "rm","add", "file1")
     )
-    colnames(S) <- c(obj$v1,obj$v2,obj$v3,obj$v4,obj$v5)
+    inputted_variables <- as.vector(unlist(obj[2:(length(d)+1)][1]))
+    S <- S %>% select(inputted_variables)
+    
+    S[] <- lapply(S, as.numeric)
     head(S)
+    
   })
   
     output$plot2 <- renderPlot({
+      
+      
       
       obj <- get_data()
       
       S <- obj$data
       
-      c(obj$v1,obj$v2,obj$v3,obj$v4,obj$v5)
-      
-      S <- S %>% select(c(obj$v1,obj$v2,obj$v3,obj$v4,obj$v5))
-      S <- cbind.data.frame(
-        as.numeric(unlist(S[1]))
-        ,as.numeric(unlist(S[2]))
-        ,as.numeric(unlist(S[3]))
-        ,as.numeric(unlist(S[4]))
-        ,as.numeric(unlist(S[5]))
+      d <- setdiff(
+        names(input),
+        c("sidebarCollapsed", "inNumber", "sidebarItemExpanded", "dataset", "rm","add", "file1")
       )
-      colnames(S) <- c(obj$v1,obj$v2,obj$v3,obj$v4,obj$v5)
+      inputted_variables <- as.vector(unlist(obj[2:(length(d)+1)][1]))
+      S <- S %>% select(inputted_variables)
+      
+      S[] <- lapply(S, as.numeric)
+      # c(obj$v1,obj$v2,obj$v3,obj$v4,obj$v5)
+      # 
+      # S <- S %>% select(c(obj$v1,obj$v2,obj$v3,obj$v4,obj$v5))
+      # S <- cbind.data.frame(
+      #   as.numeric(unlist(S[1]))
+      #   ,as.numeric(unlist(S[2]))
+      #   ,as.numeric(unlist(S[3]))
+      #   ,as.numeric(unlist(S[4]))
+      #   ,as.numeric(unlist(S[5]))
+      # )
+      # colnames(S) <- c(obj$v1,obj$v2,obj$v3,obj$v4,obj$v5)
       #colnames(S) <- c(obj$v1,obj$v2,obj$v3)
       
       a1 <- make_a()

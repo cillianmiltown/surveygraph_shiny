@@ -63,3 +63,42 @@ save(ICSMP_500,COVID_measures, file="ICSMP_500.RData")
 
 #sssurvey cran
 #anesr on github
+
+
+
+
+obj_vx_fun <- function(x){
+  noquote(paste("obj$", noquote(d[x]),sep = ""))}
+
+sapply(1:length(d), obj_vx_fun)
+
+obj_vx_fun(2)
+
+c(obj$v1,obj$v2,obj$v3,obj$v4,obj$v5)
+
+d_vector <- sapply(1:length(d), obj_vx_fun)
+
+
+inputted_variables_fun <- function(x){
+  eval(parse(text=d_vector[x]))}
+
+
+# eval(parse(text=d_vector[1]))
+
+
+
+obj <- get_data()
+
+S <- obj$data
+
+c(obj$v1,obj$v2,obj$v3,obj$v4,obj$v5)
+
+S <- S %>% select(c(obj$v1,obj$v2,obj$v3,obj$v4,obj$v5))
+S <- cbind.data.frame(
+  as.numeric(unlist(S[1]))
+  ,as.numeric(unlist(S[2]))
+  ,as.numeric(unlist(S[3]))
+  ,as.numeric(unlist(S[4]))
+  ,as.numeric(unlist(S[5]))
+)
+colnames(S) <- c(obj$v1,obj$v2,obj$v3,obj$v4,obj$v5)

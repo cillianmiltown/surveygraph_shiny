@@ -83,6 +83,7 @@ ui <- dashboardPage(
                   h4("Add/remove variables"),
                   h5("(Removing doesn't work properly yet. Refresh App instead)"),
                   
+                  tags$hr(), 
                   numericInput("inNumber", "How many participants", 20)
                   
                   

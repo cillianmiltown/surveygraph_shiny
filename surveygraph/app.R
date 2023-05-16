@@ -246,6 +246,8 @@ server <- function(input, output, session) {
     S <- S %>% select(inputted_variables)
     
     S[] <- lapply(S, as.numeric)
+    a1 <- make_a()
+    S <- sample_n(S,a1)
     head(S)
     
   })

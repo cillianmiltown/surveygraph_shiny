@@ -78,13 +78,11 @@ ui <- dashboardPage(
                   # selectInput("v5","Variable 5", choices = NULL), #,
                   
                   
-                  h3("Add additional variables:"),
-                  
                   actionButton(inputId = "rm", label = "-"),
                   actionButton(inputId = "add", label = "+"),
+                  h4("Add/remove variables"),
+                  h5("(Removing doesn't work properly yet. Refresh App instead)"),
                   
-                  
-                  h3("Select Number of Participants"),
                   numericInput("inNumber", "How many participants", 20)
                   
                   
@@ -167,7 +165,7 @@ server <- function(input, output, session) {
   make_a <- reactive({input$inNumber})
   # get data object
   get_data<-reactive({
-    
+    rm(d)
     if(!exists(input$dataset)) return() # if no upload
     
     check<-function(x){is.null(x) || x==""}
@@ -326,6 +324,8 @@ server <- function(input, output, session) {
       print('plot(g, vertex.size=5, vertex.label=NA)')
       
     })
+    
+    
     
 }
 

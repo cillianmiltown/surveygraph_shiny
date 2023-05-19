@@ -60,6 +60,13 @@ ui <- dashboardPage(
                             multiple = TRUE,
                             accept = c(".sav")),tags$hr(),
                   
+                  h4("Clean up plots"),
+                  checkboxInput("rm_iso1", "Remove Isolated Nodes (respondents)", FALSE
+                  ),
+                  checkboxInput("rm_iso2", "Remove Isolated Nodes (items)", FALSE
+                  ),
+                  tags$hr(), 
+                  
                   # create a dropdown menu for selecting the dataset to be used
                   selectInput("dataset","Data:",
                               choices =list(
@@ -86,8 +93,13 @@ ui <- dashboardPage(
                   actionButton(inputId = "rm", label = "-"),
                   actionButton(inputId = "add", label = "+"),
                   h4("Add/remove variables"),
-                  h5("(Removing doesn't work properly yet. Refresh App instead)"),
                   
+                  # tags$hr(), 
+                  # h4("Clean up plots"),
+                  # checkboxInput("rm_iso1", "Remove Isolated Nodes (respondents)", FALSE
+                  # ),
+                  # checkboxInput("rm_iso2", "Remove Isolated Nodes (items)", FALSE
+                  # ),
                   tags$hr(), 
                   numericInput("inNumber", "How many participants", 20)
                   
@@ -132,10 +144,13 @@ server <- function(input, output, session) {
     )
   })
   observeEvent(input$rm, {
+    var.opts<-colnames(get(input$dataset))
+    #rm(d)
     removeUI(
       selector = paste0("#selectize_div", input_counter())
     )
     input_counter(input_counter() - 1)
+    
   })
   
   observe({
@@ -167,8 +182,16 @@ server <- function(input, output, session) {
   })
   
   
-  
+  get_input <- reactive({names(input)})
   make_a <- reactive({input$inNumber})
+  get_d <- reactive({setdiff(
+    names(input),
+    c("sidebarCollapsed", "inNumber", "sidebarItemExpanded"
+      , "dataset", "rm","add", "file1"
+      , "polarization","rm_iso1","rm_iso2")
+  )[c(0:(input_counter()+1))]
+    
+    })
   make_polarization <- reactive({input$polarization})
   # get data object
   get_data<-reactive({
@@ -180,11 +203,13 @@ server <- function(input, output, session) {
     
     polarization <- make_polarization()
     
-    d <- setdiff(
-      names(input),
-      c("sidebarCollapsed", "inNumber", "sidebarItemExpanded", "dataset"
-        , "rm","add", "file1", "polarization")
-    )
+    d <- get_d()
+    # d <- setdiff(
+    #   names(input),
+    #   c("sidebarCollapsed", "inNumber", "sidebarItemExpanded", "dataset"
+    #     , "rm","add", "file1", "polarization")
+    # )
+    
     
     
     obj_vx_input_fun <- function(x){
@@ -215,18 +240,19 @@ server <- function(input, output, session) {
     )
     
     #require all to be set to proceed
-    if(any(sapply(obj,check))) return()
-    #make sure choices had a chance to update
-    check<-function(obj){
-      !all(c(obj$dv,obj$iv,obj$mediator) %in% colnames(obj$data))
-    }
-    
-    if(check(obj)) return()
-    
+    # if(any(sapply(obj,check))) return()
+    # #make sure choices had a chance to update
+    # check<-function(obj){
+    #   !all(c(obj$dv,obj$iv,obj$mediator) %in% colnames(obj$data))
+    # }
+    # 
+    # if(check(obj)) return()
+    # 
     
     obj
     
   })
+  
   
   get_data2 <- reactive({
     
@@ -250,18 +276,23 @@ server <- function(input, output, session) {
   output$datahead <- renderPrint({
     obj <- get_data()
     S <- obj$data
-    d <- setdiff(
-      names(input),
-      c("sidebarCollapsed", "inNumber", "sidebarItemExpanded", "dataset", "rm","add", "file1")
-    )
+    # d <- setdiff(
+    #   names(input),
+    #   c("sidebarCollapsed", "inNumber", "sidebarItemExpanded", "dataset", "rm","add", "file1")
+    # )
+    d <- get_d()
+    
     inputted_variables <- as.vector(unlist(obj[2:(length(d)+1)][1]))
+    #rm(d)
     S <- S %>% select(inputted_variables)
     
     S[] <- lapply(S, as.numeric)
     a1 <- make_a()
     S <- sample_n(S,a1)
+    # head(S)
+    # obj[2]
+    # get_d()
     head(S)
-    
   })
   
   #### output plot ####
@@ -272,12 +303,10 @@ server <- function(input, output, session) {
       obj <- get_data()
       
       S <- obj$data
+      d <- get_d()
       
-      d <- setdiff(
-        names(input),
-        c("sidebarCollapsed", "inNumber", "sidebarItemExpanded", "dataset", "rm","add", "file1")
-      )
       inputted_variables <- as.vector(unlist(obj[2:(length(d)+1)][1]))
+      #rm(d)
       S <- S %>% select(inputted_variables)
       
       S[] <- lapply(S, as.numeric)
@@ -319,23 +348,45 @@ server <- function(input, output, session) {
       g2 <- igraph::graph.data.frame(edgelists[[2]], vertices=names2, directed=FALSE)
       
       
-      V(g1)$group
-      V(g1)$color <- ifelse(V(g1)$group == 10, "blue", "red")
+      
+      V(g1)$color <- ifelse(V(g1)$group > median(V(g1)$group), "blue", "red")
       V(g1)$color
       
       isolated_nodes1 <- which(degree(g1)==0)
       isolated_nodes2 <- which(degree(g2)==0)
       
-      g1c <- delete.vertices(g1, isolated_nodes1)
-      g2c <- delete.vertices(g2, isolated_nodes2)
       
-      E(g2c)$label= E(g2c)$weight
+      
+      if (
+        input$rm_iso1==1
+      ) 
+      {g1c <- delete.vertices(g1, isolated_nodes1)
+      } else {
+        g1c <- g1 #delete.vertices(g1, isolated_nodes1)
+      }
+      
+      
+      if (
+        input$rm_iso2==1
+      ) 
+      {g2c <- delete.vertices(g2, isolated_nodes2)
+      } else {
+        g2c <- g2 #delete.vertices(g1, isolated_nodes1)
+      }
+      
+      
+      # g1c <- delete.vertices(g1, isolated_nodes1)
+      # g2c <- delete.vertices(g2, isolated_nodes2)
+      
+      #E(g2c)$label= E(g2c)$weight
       
       par(mfrow=c(1,2), mar=c(1,1,1,1))
       plot(g1c, vertex.size=2, vertex.label=NA, edge.width=0.2
            #, layout=layout.fruchterman.reingold
            , main="respondents")
-      plot(g2c, vertex.size=10, edge.width=1.0, layout=layout.fruchterman.reingold, main="items")
+      plot(g2c, vertex.size=10, edge.width=1.0
+           #, layout=layout.fruchterman.reingold
+           , main="items")
       # g1 <- igraph::make_graph(edges=edgelist, directed=FALSE)
       # 
       # 
@@ -423,9 +474,12 @@ server <- function(input, output, session) {
       )
     })
     
-    
+    observe(print(get_d()))
     
 }
 
 # Run the application 
 shinyApp(ui = ui, server = server)
+
+# Possible solution for deleting redundant values in list at
+# https://github.com/rstudio/shiny/issues/2374

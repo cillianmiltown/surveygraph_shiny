@@ -194,12 +194,24 @@ ESS_500 <- df
 save(ESS_500,ESS_GB_500, file="ESS_500.RData")
 
 
+rm(list = ls())
+load(url("https://github.com/cillianmiltown/surveygraph_shiny/blob/0c32f2b57afabde8467fd6f12076ba06cee5af47/surveygraph/ESS_500.RData?raw=true"))
 
 
+df <- ESS_500
 
+skimr::skim(df)
 
+sample(500,100)
 
+df1 <- df[c(sample(500,100)),]
+skimr::skim(df1)
+df1[,c(1:4)]
+df1[[c("essround","proddate")]]
+df1[[c("essround","proddate")]]
 
+skimr::skim(df1[,c("essround","proddate")])
 
+summary(df1[,c("essround","proddate")])
 
-
+skimr::skim(df[,c("trstprl","trstgl","trstplc","trstplt","trstprt","trstep","trstun","trstsci")])

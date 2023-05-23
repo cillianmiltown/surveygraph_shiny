@@ -15,6 +15,7 @@ library(surveygraphr)
 library(igraph)
 
 load("ICSMP_500.RData")
+load("ESS_500.RData")
 
 
 
@@ -70,8 +71,11 @@ ui <- dashboardPage(
                   # create a dropdown menu for selecting the dataset to be used
                   selectInput("dataset","Data:",
                               choices =list(
+                                            
                                             COVID_measures = "COVID_measures",
                                             ICSMP_500 = "ICSMP_500",
+                                            ESS_500 = "ESS_500",
+                                            ESS_GB_500 = "ESS_GB_500",
                                             uploaded_file = "inFile"), selected=NULL),
                   # create a dropdown menu for selecting variable 1
                   
@@ -101,7 +105,7 @@ ui <- dashboardPage(
                   # checkboxInput("rm_iso2", "Remove Isolated Nodes (items)", FALSE
                   # ),
                   tags$hr(), 
-                  numericInput("inNumber", "How many participants", 20)
+                  numericInput("inNumber", "How many participants", 100)
                   
                   
                 ),
@@ -184,12 +188,15 @@ server <- function(input, output, session) {
   
   get_input <- reactive({names(input)})
   make_a <- reactive({input$inNumber})
-  get_d <- reactive({setdiff(
+  get_d <- reactive({
+    sort(
+    setdiff(
     names(input),
     c("sidebarCollapsed", "inNumber", "sidebarItemExpanded"
       , "dataset", "rm","add", "file1"
       , "polarization","rm_iso1","rm_iso2")
-  )[c(0:(input_counter()+1))]
+  ))[c(0:(input_counter()+1))]
+    
     
     })
   make_polarization <- reactive({input$polarization})
@@ -310,29 +317,11 @@ server <- function(input, output, session) {
       S <- S %>% select(inputted_variables)
       
       S[] <- lapply(S, as.numeric)
-      # c(obj$v1,obj$v2,obj$v3,obj$v4,obj$v5)
-      # 
-      # S <- S %>% select(c(obj$v1,obj$v2,obj$v3,obj$v4,obj$v5))
-      # S <- cbind.data.frame(
-      #   as.numeric(unlist(S[1]))
-      #   ,as.numeric(unlist(S[2]))
-      #   ,as.numeric(unlist(S[3]))
-      #   ,as.numeric(unlist(S[4]))
-      #   ,as.numeric(unlist(S[5]))
-      # )
-      # colnames(S) <- c(obj$v1,obj$v2,obj$v3,obj$v4,obj$v5)
-      #colnames(S) <- c(obj$v1,obj$v2,obj$v3)
+     
       
       a1 <- make_a()
       S <- sample_n(S,a1)
-      # as.data.frame(unlist(obj$data))
-      # S <- obj$data
-      # S <- cbind.data.frame(
-      #   as.numeric(unlist(S[1]))
-      #   ,as.numeric(unlist(S[2]))
-      #   ,as.numeric(unlist(S[3]))
-      # )
-      #S <- as.numeric(S[1])
+      
       S[] <- lapply(S, as.numeric)
       
       S <- na.omit(S)

@@ -148,3 +148,58 @@ plot(g1c, vertex.size=2, vertex.label=NA, edge.width=0.2
      #, layout=layout.fruchterman.reingold
      , main="respondents")
 plot(g2c, vertex.size=10, edge.width=1.0, layout=layout.fruchterman.reingold, main="items")
+
+
+
+
+
+
+
+
+# https://cran.r-project.org/web/packages/essurvey/vignettes/intro_ess.html
+
+# install.packages("devtools")
+devtools::install_github("ropensci/essurvey")
+install.packages("essurvey")
+
+library(essurvey)
+set_email("cillian.mchugh@ul.ie")
+#set_email("cillian.miltown@gmail.com")
+show_countries()
+import_all_cntrounds()
+show
+show_country_rounds("Turkey")
+
+show_rounds()
+one_round <- import_rounds(1)
+
+
+
+df <- read.csv("../SurveyGraph/ESS10.csv")
+
+df <- dplyr::sample_n(df,500)
+
+head(df)
+
+table(df$cntry)
+
+
+
+ESS_GB_500 <- dplyr::sample_n(
+  df[which(df$cntry=="GB"),],
+  500)
+
+ESS_500 <- df
+
+save(ESS_500,ESS_GB_500, file="ESS_500.RData")
+
+
+
+
+
+
+
+
+
+
+

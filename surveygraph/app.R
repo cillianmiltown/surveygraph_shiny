@@ -66,17 +66,19 @@ ui <- dashboardPage(
                   ),
                   checkboxInput("rm_iso2", "Remove Isolated Nodes (items)", FALSE
                   ),
+                  checkboxInput("ess_missing", "Remove ESS missing values (77, 88, 99)", FALSE
+                  ),
                   tags$hr(), 
                   
                   # create a dropdown menu for selecting the dataset to be used
                   selectInput("dataset","Data:",
                               choices =list(
-                                            
-                                            COVID_measures = "COVID_measures",
-                                            ICSMP_500 = "ICSMP_500",
-                                            ESS_500 = "ESS_500",
-                                            ESS_GB_500 = "ESS_GB_500",
-                                            uploaded_file = "inFile"), selected=NULL),
+                                
+                                COVID_measures = "COVID_measures",
+                                ICSMP_500 = "ICSMP_500",
+                                ESS_500 = "ESS_500",
+                                ESS_GB_500 = "ESS_GB_500",
+                                uploaded_file = "inFile"), selected=NULL),
                   # create a dropdown menu for selecting variable 1
                   
                   
@@ -105,7 +107,7 @@ ui <- dashboardPage(
                   # checkboxInput("rm_iso2", "Remove Isolated Nodes (items)", FALSE
                   # ),
                   tags$hr(), 
-                  numericInput("inNumber", "How many participants", 100)
+                  numericInput("inNumber", "Number of participants for Plot", 100)
                   
                   
                 ),
@@ -119,7 +121,7 @@ ui <- dashboardPage(
                 #   DT::dataTableOutput("table1"))
               ),
               
-             
+              
       )
     )
   )
@@ -127,7 +129,7 @@ ui <- dashboardPage(
 
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
-
+  
   observeEvent(input$file1,{
     inFile<<-upload_data()
   })
@@ -190,15 +192,15 @@ server <- function(input, output, session) {
   make_a <- reactive({input$inNumber})
   get_d <- reactive({
     sort(
-    setdiff(
-    names(input),
-    c("sidebarCollapsed", "inNumber", "sidebarItemExpanded"
-      , "dataset", "rm","add", "file1"
-      , "polarization","rm_iso1","rm_iso2")
-  ))[c(0:(input_counter()+1))]
+      setdiff(
+        names(input),
+        c("sidebarCollapsed", "inNumber", "sidebarItemExpanded"
+          , "dataset", "rm","add", "file1"
+          , "polarization","rm_iso1","rm_iso2","ess_missing")
+      ))[c(0:(input_counter()+1))]
     
     
-    })
+  })
   make_polarization <- reactive({input$polarization})
   # get data object
   get_data<-reactive({
@@ -221,7 +223,7 @@ server <- function(input, output, session) {
     
     obj_vx_input_fun <- function(x){
       noquote(paste(noquote(d[x]),"=", "input$", noquote(d[x]),sep = ""))
-      }
+    }
     
     inputted_vector <- sapply(1:length(d), obj_vx_input_fun)
     
@@ -235,7 +237,7 @@ server <- function(input, output, session) {
               #   names(input),
               #   c("sidebarCollapsed", "inNumber", "sidebarItemExpanded", "dataset", "rm","add", "file1")
               # )
-
+              
               
               
               sapply(1:length(d), inputted_variables_fun)
@@ -292,95 +294,140 @@ server <- function(input, output, session) {
     inputted_variables <- as.vector(unlist(obj[2:(length(d)+1)][1]))
     #rm(d)
     S <- S %>% select(inputted_variables)
-    
+    if (
+      input$ess_missing==1
+    ) 
+    {
+      df <- S
+      val_repl <- c(77,88,99)
+      val_repl 
+      df_temp <- sapply(df,function(x) replace(x, x %in% val_repl, NA))
+      df_temp <- as.data.frame(df_temp)
+      sum(complete.cases(df_temp))
+      S <- as.data.frame(df_temp[which(complete.cases(df_temp)),])
+      colnames(df)
+      S <- `colnames<-`(S, colnames(df))
+      S
+      
+    } else {
+      S
+    }
+    S_full <- S
     S[] <- lapply(S, as.numeric)
     a1 <- make_a()
     S <- sample_n(S,a1)
     # head(S)
     # obj[2]
     # get_d()
-    head(S)
+    cat(
+      "Full dimenssions of selected data",
+      paste(dim(S_full)[1], " Rows"),
+      paste(dim(S_full)[2], " Columns"),
+      "",
+      "Variables Selected:",
+      sep="\n")
+    print(head(S))
+    
   })
   
   #### output plot ####
-    output$plot2 <- renderPlot({
+  output$plot2 <- renderPlot({
+    
+    
+    
+    obj <- get_data()
+    
+    S <- obj$data
+    d <- get_d()
+    
+    inputted_variables <- as.vector(unlist(obj[2:(length(d)+1)][1]))
+    #rm(d)
+    S <- S %>% select(inputted_variables)
+    
+    S[] <- lapply(S, as.numeric)
+    
+    
+    if (
+      input$ess_missing==1
+    ) 
+    {
+      df <- S
+      val_repl <- c(77,88,99)
+      val_repl 
+      df_temp <- sapply(df,function(x) replace(x, x %in% val_repl, NA))
+      df_temp <- as.data.frame(df_temp)
+      sum(complete.cases(df_temp))
+      S <- as.data.frame(df_temp[which(complete.cases(df_temp)),])
+      colnames(df)
+      S <- `colnames<-`(S, colnames(df))
+      S
       
-      
-      
-      obj <- get_data()
-      
-      S <- obj$data
-      d <- get_d()
-      
-      inputted_variables <- as.vector(unlist(obj[2:(length(d)+1)][1]))
-      #rm(d)
-      S <- S %>% select(inputted_variables)
-      
-      S[] <- lapply(S, as.numeric)
-     
-      
-      a1 <- make_a()
-      S <- sample_n(S,a1)
-      
-      S[] <- lapply(S, as.numeric)
-      
-      S <- na.omit(S)
-      
-      (S[,1])
-      
-      names1 <- data.frame(id=c(1:length(S[,1])), group=S[,1])
-      names2 <- data.frame(id=c(1:length(S)))
-      
-      edgelists <- surveygraphr::graph_edgelists(S)
-      
-      g1 <- igraph::graph.data.frame(edgelists[[1]], vertices=names1, directed=FALSE)
-      g2 <- igraph::graph.data.frame(edgelists[[2]], vertices=names2, directed=FALSE)
-      
-      
-      
-      V(g1)$color <- ifelse(V(g1)$group > median(V(g1)$group), "blue", "red")
-      V(g1)$color
-      
-      isolated_nodes1 <- which(degree(g1)==0)
-      isolated_nodes2 <- which(degree(g2)==0)
-      
-      
-      
-      if (
-        input$rm_iso1==1
-      ) 
-      {g1c <- delete.vertices(g1, isolated_nodes1)
-      } else {
-        g1c <- g1 #delete.vertices(g1, isolated_nodes1)
-      }
-      
-      
-      if (
-        input$rm_iso2==1
-      ) 
-      {g2c <- delete.vertices(g2, isolated_nodes2)
-      } else {
-        g2c <- g2 #delete.vertices(g1, isolated_nodes1)
-      }
-      
-      
-      # g1c <- delete.vertices(g1, isolated_nodes1)
-      # g2c <- delete.vertices(g2, isolated_nodes2)
-      
-      #E(g2c)$label= E(g2c)$weight
-      
-      par(mfrow=c(1,2), mar=c(1,1,1,1))
-      plot(g1c, vertex.size=2, vertex.label=NA, edge.width=0.2
-           #, layout=layout.fruchterman.reingold
-           , main="respondents")
-      plot(g2c, vertex.size=10, edge.width=1.0
-           #, layout=layout.fruchterman.reingold
-           , main="items")
-      # g1 <- igraph::make_graph(edges=edgelist, directed=FALSE)
-      # 
-      # 
-      # plot(g1, vertex.size=5, vertex.label=NA)
-      # 
+    } else {
+      S
+    }
+    
+    a1 <- make_a()
+    S <- sample_n(S,a1)
+    
+    S[] <- lapply(S, as.numeric)
+    
+    S <- na.omit(S)
+    
+    (S[,1])
+    
+    names1 <- data.frame(id=c(1:length(S[,1])), group=S[,1])
+    names2 <- data.frame(id=c(1:length(S)))
+    
+    edgelists <- surveygraphr::graph_edgelists(S)
+    
+    g1 <- igraph::graph.data.frame(edgelists[[1]], vertices=names1, directed=FALSE)
+    g2 <- igraph::graph.data.frame(edgelists[[2]], vertices=names2, directed=FALSE)
+    
+    
+    
+    V(g1)$color <- ifelse(V(g1)$group > median(V(g1)$group), "blue", "red")
+    V(g1)$color
+    
+    isolated_nodes1 <- which(degree(g1)==0)
+    isolated_nodes2 <- which(degree(g2)==0)
+    
+    
+    
+    if (
+      input$rm_iso1==1
+    ) 
+    {g1c <- delete.vertices(g1, isolated_nodes1)
+    } else {
+      g1c <- g1 #delete.vertices(g1, isolated_nodes1)
+    }
+    
+    
+    if (
+      input$rm_iso2==1
+    ) 
+    {g2c <- delete.vertices(g2, isolated_nodes2)
+    } else {
+      g2c <- g2 #delete.vertices(g1, isolated_nodes1)
+    }
+    
+    
+    # g1c <- delete.vertices(g1, isolated_nodes1)
+    # g2c <- delete.vertices(g2, isolated_nodes2)
+    
+    #E(g2c)$label= E(g2c)$weight
+    
+    par(mfrow=c(1,2), mar=c(1,1,1,1))
+    plot(g1c, vertex.size=2, vertex.label=NA, edge.width=0.2
+         #, layout=layout.fruchterman.reingold
+         , main="respondents")
+    plot(g2c, vertex.size=10, edge.width=1.0
+         #, layout=layout.fruchterman.reingold
+         , main="items")
+    # g1 <- igraph::make_graph(edges=edgelist, directed=FALSE)
+    # 
+    # 
+    # plot(g1, vertex.size=5, vertex.label=NA)
+    # 
     #   
     #     # generate bins based on input$bins from ui.R
     #     x    <- faithful[, 2]
@@ -390,52 +437,52 @@ server <- function(input, output, session) {
     #     hist(x, breaks = bins, col = 'darkgray', border = 'white',
     #          xlab = 'Waiting time to next eruption (in mins)',
     #          main = 'Histogram of waiting times')
-    })
-    
+  })
+  
   #### Simulated Output ####
   
-    output$plot1 <- renderPlot({
-      
-      #rm(list=ls())
-      
-      # S1 <- surveygraphr::gensurvey(200,25)
-      # results <- surveygraphr::exploregraph(S1)
-      # edgelist <- surveygraphr::listgraph(S1)
-      # g <- igraph::make_graph(edges=edgelist, directed=FALSE)
-      # plot(g, vertex.size=5, vertex.label=NA)
-      
-      polarization <- make_polarization()
-      
-      S1 <- surveygraphr::generate_survey_polarised(m=300, n=15, polarisation=polarization)
-      
-      names1 <- data.frame(id=c(1:length(S1$X1)), group=S1$X1)
-      names2 <- data.frame(id=c(1:length(S1)))
-      
-      edgelists <- surveygraphr::graph_edgelists(S1)
-      
-      g1 <- igraph::graph.data.frame(edgelists[[1]], vertices=names1, directed=FALSE)
-      g2 <- igraph::graph.data.frame(edgelists[[2]], vertices=names2, directed=FALSE)
-      
-      V(g1)$color <- ifelse(V(g1)$group == 1, "blue", "red")
-      
-      isolated_nodes1 <- which(degree(g1)==0)
-      isolated_nodes2 <- which(degree(g2)==0)
-      
-      g1c <- delete.vertices(g1, isolated_nodes1)
-      g2c <- delete.vertices(g2, isolated_nodes2)
-      
-      E(g2c)$label= E(g2c)$weight
-      
-      par(mfrow=c(1,2), mar=c(1,1,1,1))
-      plot(g1c, vertex.size=2, vertex.label=NA, edge.width=0.2, layout=layout.fruchterman.reingold, main="respondents")
-      plot(g2c, vertex.size=10, edge.width=1.0, layout=layout.fruchterman.reingold, main="items")
-      
-      
-      
-    })
+  output$plot1 <- renderPlot({
     
-    output$code1 <- renderPrint({
-      cat(
+    #rm(list=ls())
+    
+    # S1 <- surveygraphr::gensurvey(200,25)
+    # results <- surveygraphr::exploregraph(S1)
+    # edgelist <- surveygraphr::listgraph(S1)
+    # g <- igraph::make_graph(edges=edgelist, directed=FALSE)
+    # plot(g, vertex.size=5, vertex.label=NA)
+    
+    polarization <- make_polarization()
+    
+    S1 <- surveygraphr::generate_survey_polarised(m=300, n=15, polarisation=polarization)
+    
+    names1 <- data.frame(id=c(1:length(S1$X1)), group=S1$X1)
+    names2 <- data.frame(id=c(1:length(S1)))
+    
+    edgelists <- surveygraphr::graph_edgelists(S1)
+    
+    g1 <- igraph::graph.data.frame(edgelists[[1]], vertices=names1, directed=FALSE)
+    g2 <- igraph::graph.data.frame(edgelists[[2]], vertices=names2, directed=FALSE)
+    
+    V(g1)$color <- ifelse(V(g1)$group == 1, "blue", "red")
+    
+    isolated_nodes1 <- which(degree(g1)==0)
+    isolated_nodes2 <- which(degree(g2)==0)
+    
+    g1c <- delete.vertices(g1, isolated_nodes1)
+    g2c <- delete.vertices(g2, isolated_nodes2)
+    
+    E(g2c)$label= E(g2c)$weight
+    
+    par(mfrow=c(1,2), mar=c(1,1,1,1))
+    plot(g1c, vertex.size=2, vertex.label=NA, edge.width=0.2, layout=layout.fruchterman.reingold, main="respondents")
+    plot(g2c, vertex.size=10, edge.width=1.0, layout=layout.fruchterman.reingold, main="items")
+    
+    
+    
+  })
+  
+  output$code1 <- renderPrint({
+    cat(
       "S1 <- surveygraphr::generate_survey_polarised(m=300, n=15, polarisation=.5)",
       "",
       "names1 <- data.frame(id=c(1:length(S1$X1)), group=S1$X1)",
@@ -460,11 +507,11 @@ server <- function(input, output, session) {
       "plot(g1c, vertex.size=2, vertex.label=NA, edge.width=0.2, layout=layout.fruchterman.reingold, main='respondents'')",
       "plot(g2c, vertex.size=10, edge.width=1.0, layout=layout.fruchterman.reingold, main='items')",
       sep="\n"
-      )
-    })
-    
-    observe(print(get_d()))
-    
+    )
+  })
+  
+  observe(print(get_d()))
+  
 }
 
 # Run the application 

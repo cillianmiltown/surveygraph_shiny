@@ -194,6 +194,10 @@ ESS_500 <- df
 save(ESS_500,ESS_GB_500, file="ESS_500.RData")
 
 
+
+
+
+
 rm(list = ls())
 load(url("https://github.com/cillianmiltown/surveygraph_shiny/blob/0c32f2b57afabde8467fd6f12076ba06cee5af47/surveygraph/ESS_500.RData?raw=true"))
 
@@ -214,4 +218,172 @@ skimr::skim(df1[,c("essround","proddate")])
 
 summary(df1[,c("essround","proddate")])
 
-skimr::skim(df[,c("trstprl","trstgl","trstplc","trstplt","trstprt","trstep","trstun","trstsci")])
+skimr::skim(df[c("trstprl","trstgl","trstplc","trstplt","trstprt","trstep","trstun","trstsci"),])
+
+
+test <- df[which(is.na(df)==FALSE),]
+
+df[which(is.na(df$trstprl)==FALSE),]
+
+sum(complete.cases(df))
+library(dplyr)
+df %>% mutate(trstprl = recode(trstprl, "88" = "NA"))
+
+df %>% mutate(trstprl = if_else(trstprl == 88, NA, trstprl))
+
+df %>% mutate(trstprl = if_else(trstprl > 10, NA, trstprl))
+
+
+
+mutate(result=recode(result, 'Win'='1', 'Loss'='0'))
+
+remove_missing_fun <- 
+df <- ESS_GB_500
+
+df <- df[c("trstprl","trstlgl","trstplc","trstplt","trstprt","trstep","trstun","trstsci")]
+
+df["trstprl","trstlgl","trstplc","trstplt","trstprt","trstep","trstun","trstsci"]
+df$trstlgl
+df[c("trstprl","trstlgl")]
+
+df <- ESS_500
+
+
+df <- df[,c("trstprl","trstgl")]
+filter()
+df$cntry
+
+dplyr::filter(df, cntry == "GB")
+
+Filter(df,cntry=="GB")
+df[which(df$cntry=="GB"),]
+
+
+
+
+val_repl <- c(77,88,99)
+val_repl 
+df_temp <- sapply(df,function(x) replace(x, x %in% val_repl, NA))
+df_temp <- as.data.frame(df_temp)
+sum(complete.cases(df_temp))
+
+df_no_missing <- df_temp[which(complete.cases(df_temp)),]
+class(df_no_missing)
+
+
+library(igraph)
+g1 <- graph( edges=c(1,2, 2,3, 3,1, 4,2), n=4, directed=F )
+plot(g1)
+
+
+install.packages("pacman")
+library(pacman)
+pacman::p_install("igraph")
+
+library(igraph)
+g1 <- graph( edges=c(1,2, 2,3, 3,1, 4,2), n=4, directed=F )
+plot(g1)
+
+# Color a node 
+V(g1)$color <- '#66ff33'  
+g1
+V(g1)==c(1,2)
+V(g1)$color <- ifelse(V(g1)==c(1,2), "lightblue", "pink")
+plot(g1)
+
+E(g1)$color <- 'orange'
+
+
+
+plot(g1)
+V(g1)[which()]
+
+load(url("https://github.com/cillianmiltown/surveygraph_shiny/blob/0c32f2b57afabde8467fd6f12076ba06cee5af47/surveygraph/ESS_500.RData?raw=true"))
+
+df <- df[c("trstprl","trstlgl","trstplc","trstplt","trstprt","trstep","trstun","trstsci")]
+
+
+plot(x, y, type = "l", lty = 1)
+plot(df$trstep,df$trstlgl)
+
+
+# use sapply and replace to replace these 'missing' values with NAs
+df_temp <- sapply(df,function(x) replace(x, x %in% val_repl, NA))
+df_temp <- as.data.frame(df_temp)
+
+# remove NAs
+df_no_missing <- df_temp[which(complete.cases(df_temp)),]
+
+df <- df_no_missing
+plot(df$trstep,df$trstlgl,type = "l", lty = 1)
+
+
+df1 <- df_no_missing
+
+df1
+
+variable.names(df1)
+interaction_fun <- function(x){
+  dplyr::case_when(x > mean(x,na.rm=T)+sd(x,na.rm=T) ~ "1high",
+                   x < mean(x,na.rm=T)+sd(x,na.rm=T) & x > mean(x,na.rm=T)-sd(x,na.rm=T) ~ "2moderate",
+                   x < mean(x,na.rm=T)-sd(x,na.rm=T) ~ "3low")
+}
+
+library(dplyr)
+library(ggplot2)
+
+
+interaction_fun <- function(x){
+  dplyr::case_when(x > mean(x,na.rm=T)+sd(x,na.rm=T) ~ "1high",
+                   x < mean(x,na.rm=T)+sd(x,na.rm=T) & x > mean(x,na.rm=T)-sd(x,na.rm=T) ~ "2moderate",
+                   x < mean(x,na.rm=T)-sd(x,na.rm=T) ~ "3low")
+}
+
+
+
+df1 <-
+  df %>%
+  dplyr::mutate(trust_polt_3groups = interaction_fun(trstplt)
+                , national_pi_mean = mean(trstplt)
+                , national_pi_sd = sd(trstplt))
+
+g <- ggplot(df1, aes(trstprl, trstep, linetype =trust_polt_3groups))+
+  geom_jitter(height = .1, width = .1, size=.0001, color="gray") + 
+  #ylim(0,12) +
+  geom_smooth(method=lm, size = .5, color="black")+
+  labs(y = "Trust in European Parlimant",
+       x = "Trust in country's parliament",
+       linetype = "Trust in politicians"
+  )+
+  scale_linetype_manual(values = c("longdash", "solid", "dotted"),
+                        labels=c("Low",
+                                 "Moderate",
+                                 "High"))
+g
+
+
+
+df3 <- df
+
+df1 <- df %>% select(trstprl)
+
+df <- S
+val_repl <- c(77,88,99)
+val_repl 
+df_temp <- sapply(df,function(x) replace(x, x %in% val_repl, NA))
+df_temp <- as.data.frame(df_temp)
+sum(complete.cases(df_temp))
+S <- as.data.frame(df_temp[which(complete.cases(df_temp)),])
+colnames(df)
+S <- `colnames<-`(S, colnames(df))
+S
+S[] <- lapply(S, as.numeric)
+#a1 <- make_a()
+#S <- sample_n(S,a1)
+# head(S)
+# obj[2]
+# get_d()
+head(S)
+
+
+

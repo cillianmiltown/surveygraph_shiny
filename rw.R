@@ -386,4 +386,165 @@ S[] <- lapply(S, as.numeric)
 head(S)
 
 
+#### testing updated package June 2023 ####
+
+rm(list = ls())
+
+library("surveygraph")
+library("igraph")
+
+
+
+
+S <- make_synthetic_data(nrow=400, ncol=15, polarisation=1.25)
+
+names <- data.frame(id=c(1:length(S$X1)), group=S$X1)
+
+edgelist <- make_projection(S, layer="agent")
+
+g <- graph.data.frame(edgelist, vertices=names, directed=FALSE)
+
+V(g)$color <- ifelse(V(g)$group == 1, "blue", "red")
+
+g <- delete.vertices(g, which(degree(g)==0))
+
+plot(g, vertex.size=2, vertex.label=NA, edge.width=0.2, layout=layout.fruchterman.reingold, main="agent layer")
+
+
+
+
+
+
+polarization <- 0 #1.25 #make_polarization()
+
+
+
+S1 <- surveygraph::make_synthetic_data(nrow=400, ncol=15, polarisation=polarization, minority =0.5)
+
+names1 <- data.frame(id=c(1:length(S$X1)), group=S$X1)
+names2 <- data.frame(id=c(1:length(S)))
+
+names1 <- data.frame(id=c(1:length(S1$X1)), group=S1$X1)
+names2 <- data.frame(id=c(1:length(S1)))
+
+edgelists <- surveygraph::make_projection(S1)
+
+g1 <- igraph::graph.data.frame(edgelists[[1]], vertices=names1, directed=FALSE)
+g2 <- igraph::graph.data.frame(edgelists[[2]], vertices=names2, directed=FALSE)
+
+V(g1)$color <- ifelse(V(g1)$group == 1, "blue", "red")
+
+isolated_nodes1 <- which(degree(g1)==0)
+isolated_nodes2 <- which(degree(g2)==0)
+
+g1c <- delete.vertices(g1, isolated_nodes1)
+g2c <- delete.vertices(g2, isolated_nodes2)
+
+E(g2c)$label= E(g2c)$weight
+
+par(mfrow=c(1,2), mar=c(1,1,1,1))
+plot(g1c, vertex.size=2, vertex.label=NA, edge.width=0.2, layout=layout.fruchterman.reingold, main="respondents")
+plot(g2c, vertex.size=10, edge.width=1.0, layout=layout.fruchterman.reingold, main="items")
+
+
+
+#### for app ####
+rm(list=ls())
+
+polarization <- 2.1
+
+S1 <- surveygraph::make_synthetic_data(nrow=100, ncol=15, polarisation=polarization, minority =0.5)
+
+S1_agent <- make_projection(S1[,-1],
+                            layer = "agent", 
+                            threshold_method = "target_lcc", 
+                            method_value= .75, 
+                            centre = FALSE)
+S1_agent_graph <- graph.data.frame(S1_agent , directed=FALSE)
+
+girvan_newman <- cluster_edge_betweenness(S1_agent_graph)
+
+#communities<-cluster_edge_betweenness(S1_agent_graph) 
+
+V(S1_agent_graph)$color <- membership(girvan_newman)
+
+plot(S1_agent_graph, vertex.size = 5, vertex.label = NA)
+
+
+
+
+
+S1_symbolic <- make_projection(S1[,-1],
+                            layer = "symbolic", 
+                            threshold_method = "target_lcc", 
+                            method_value= .75, 
+                            centre = FALSE)
+
+S1_symbolic_graph <- graph.data.frame(S1_symbolic , directed=FALSE)
+
+plot(S1_symbolic_graph, vertex.size = 5, vertex.label = NA)
+
+#Extract the communities from the Girvan-Newman result and assign them to the node colour attribute in the graph
+V(S1_agent_graph)$color <- membership(girvan_newman)
+
+#plot it 
+plot(moderately_polarised_agent_graph, vertex.size = 5, vertex.label = NA)
+
+#Generate the agent projection of the survey: 
+polarised_edgelist_agent <- make_projection(testdata_polarised[,-1],layer = "agent", threshold_method = "target_lcc", method_value= .85, centre = FALSE)
+
+#Define the graph:
+polarised_agent_graph <- graph.data.frame(polarised_edgelist_agent, directed=FALSE)
+
+#plot it
+plot(polarised_agent_graph, vertex.size=2, vertex.label=NA, edge.width=0.2, layout=layout.fruchterman.reingold, main="Agent Projection: Target LCC 85%")
+
+#report the number of nodes left in the network
+paste("Nodes in graph:", length(V(polarised_agent_graph)), sep=" ")
+
+#report the edge density in the network; fully connected graph has density of 100% 
+paste("Edge density:", edge_density(polarised_agent_graph, loops = FALSE), sep=" ")
+
+
+###############
+
+
+
+ESS_500 <- read.csv("https://www.dropbox.com/s/kotimfih8v0ys2t/ESS10_500.csv?dl=1")
+
+S <- ESS_500
+
+S <- sample_n(S, 100)
+
+inputted_variables <- c("ppltrst","rlgatnd")
+
+S <- S %>% select(inputted_variables)
+
+
+S[] <- lapply(S, as.numeric)
+
+
+
+S <- na.omit(S)
+
+S1 <- S
+S1_agent <- make_projection(S1, #S1[,-1],
+                            layer = "agent", 
+                            threshold_method = "target_lcc", 
+                            method_value = .85,#threshold_up, 
+                            centre = FALSE)
+S1_agent_graph <- graph.data.frame(S1_agent , directed=FALSE)
+
+girvan_newman <- cluster_edge_betweenness(S1_agent_graph)
+
+#communities<-cluster_edge_betweenness(S1_agent_graph) 
+
+V(S1_agent_graph)$color <- membership(girvan_newman)
+
+plot(#communities,
+  S1_agent_graph, vertex.size = 5, vertex.label = NA, main="respondents"
+)
+
+
+
 

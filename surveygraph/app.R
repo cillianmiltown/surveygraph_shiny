@@ -11,7 +11,8 @@ library(shiny)
 library(shinydashboard)
 library(foreign)
 library(dplyr)
-library(surveygraphr)
+#devtools::install_github("surveygraph/surveygraphr")
+library(surveygraph)
 library(igraph)
 
 load("ICSMP_500.RData")
@@ -38,11 +39,16 @@ ui <- dashboardPage(
       ##### Simulated Data (First tab) #####
       tabItem(tabName = "simulateddata",
               fluidRow(
-                
                 box(
                   sliderInput("polarization", "Polarization:",
                               min = 0, max = 4,
                               value = 0.5, step = 0.01),
+                  sliderInput("threshold_sim", "Threshold:",
+                              min = 0, max = 1,
+                              value = 0.5, step = 0.001),
+                  radioButtons("layer1", "Select Layer to display",
+                               c("Agent" = "agent1",
+                                 "Symbolic" = "symbolic1")),
                   verbatimTextOutput("code1"))
                 ,
                 box(
@@ -62,10 +68,19 @@ ui <- dashboardPage(
                             accept = c(".sav")),tags$hr(),
                   
                   h4("Clean up plots"),
-                  checkboxInput("rm_iso1", "Remove Isolated Nodes (respondents)", FALSE
-                  ),
-                  checkboxInput("rm_iso2", "Remove Isolated Nodes (items)", FALSE
-                  ),
+                  # checkboxInput("rm_iso1", "Remove Isolated Nodes (respondents)", FALSE
+                  # ),
+                  # checkboxInput("rm_iso2", "Remove Isolated Nodes (items)", FALSE
+                  # ),
+                  
+                  
+                  sliderInput("threshold_up", "Threshold:",
+                              min = 0, max = 1,
+                              value = 0.5, step = 0.001),
+                  radioButtons("layer2", "Select Layer to display",
+                               c("Agent" = "agent2",
+                                 "Symbolic" = "symbolic2")),
+                  
                   checkboxInput("ess_missing", "Remove ESS missing values (77, 88, 99)", FALSE
                   ),
                   tags$hr(), 
@@ -196,12 +211,17 @@ server <- function(input, output, session) {
         names(input),
         c("sidebarCollapsed", "inNumber", "sidebarItemExpanded"
           , "dataset", "rm","add", "file1"
-          , "polarization","rm_iso1","rm_iso2","ess_missing")
+          , "polarization"
+         # ,"rm_iso1","rm_iso2"
+          ,"ess_missing", "threshold_sim", "layer1","threshold_up","layer2")
       ))[c(0:(input_counter()+1))]
     
     
   })
   make_polarization <- reactive({input$polarization})
+  make_threshold_sim <- reactive({input$threshold_sim})
+  make_threshold_up <- reactive({input$threshold_up})
+  
   # get data object
   get_data<-reactive({
     #rm(d)
@@ -371,72 +391,56 @@ server <- function(input, output, session) {
     
     S[] <- lapply(S, as.numeric)
     
+    
+    
     S <- na.omit(S)
     
     (S[,1])
-    
-    names1 <- data.frame(id=c(1:length(S[,1])), group=S[,1])
-    names2 <- data.frame(id=c(1:length(S)))
-    
-    edgelists <- surveygraphr::graph_edgelists(S)
-    
-    g1 <- igraph::graph.data.frame(edgelists[[1]], vertices=names1, directed=FALSE)
-    g2 <- igraph::graph.data.frame(edgelists[[2]], vertices=names2, directed=FALSE)
+    S1 <- S
     
     
+    threshold_up <- make_threshold_up()
     
-    V(g1)$color <- ifelse(V(g1)$group > median(V(g1)$group), "blue", "red")
-    V(g1)$color
-    
-    isolated_nodes1 <- which(degree(g1)==0)
-    isolated_nodes2 <- which(degree(g2)==0)
-    
-    
-    
-    if (
-      input$rm_iso1==1
-    ) 
-    {g1c <- delete.vertices(g1, isolated_nodes1)
-    } else {
-      g1c <- g1 #delete.vertices(g1, isolated_nodes1)
+    if(input$layer2=="agent2")
+    {
+      #S1 <- surveygraph::make_synthetic_data(nrow=100, ncol=15, polarisation=polarization, minority =0.5)
+      
+      S1_agent <- make_projection(S1, #S1[,-1],
+                                  layer = "agent", 
+                                  threshold_method = "target_lcc", 
+                                  method_value = threshold_up, 
+                                  centre = FALSE)
+      S1_agent_graph <- graph.data.frame(S1_agent , directed=FALSE)
+      
+      girvan_newman <- cluster_edge_betweenness(S1_agent_graph)
+      
+      #communities<-cluster_edge_betweenness(S1_agent_graph) 
+      
+      V(S1_agent_graph)$color <- membership(girvan_newman)
+      
+      plot(#communities,
+        S1_agent_graph, vertex.size = 5, vertex.label = NA, main="respondents"
+      )
     }
     
-    
-    if (
-      input$rm_iso2==1
-    ) 
-    {g2c <- delete.vertices(g2, isolated_nodes2)
-    } else {
-      g2c <- g2 #delete.vertices(g1, isolated_nodes1)
+    if(input$layer2=="symbolic2")
+    {
+      S1_symbolic <- make_projection(S1, #S1[,-1],
+                                     layer = "symbolic", 
+                                     threshold_method = "target_lcc", 
+                                     method_value = threshold_up, 
+                                     centre = FALSE)
+      
+      S1_symbolic_graph <- graph.data.frame(S1_symbolic , directed=FALSE)
+      
+      
+      
+      
+      plot(S1_symbolic_graph, vertex.size = 5, vertex.label = NA,main="items")
+      
+      
     }
     
-    
-    # g1c <- delete.vertices(g1, isolated_nodes1)
-    # g2c <- delete.vertices(g2, isolated_nodes2)
-    
-    #E(g2c)$label= E(g2c)$weight
-    
-    par(mfrow=c(1,2), mar=c(1,1,1,1))
-    plot(g1c, vertex.size=2, vertex.label=NA, edge.width=0.2
-         #, layout=layout.fruchterman.reingold
-         , main="respondents")
-    plot(g2c, vertex.size=10, edge.width=1.0
-         #, layout=layout.fruchterman.reingold
-         , main="items")
-    # g1 <- igraph::make_graph(edges=edgelist, directed=FALSE)
-    # 
-    # 
-    # plot(g1, vertex.size=5, vertex.label=NA)
-    # 
-    #   
-    #     # generate bins based on input$bins from ui.R
-    #     x    <- faithful[, 2]
-    #     bins <- seq(min(x), max(x), length.out = input$bins + 1)
-    # 
-    #     # draw the histogram with the specified number of bins
-    #     hist(x, breaks = bins, col = 'darkgray', border = 'white',
-    #          xlab = 'Waiting time to next eruption (in mins)',
-    #          main = 'Histogram of waiting times')
   })
   
   #### Simulated Output ####
@@ -445,69 +449,147 @@ server <- function(input, output, session) {
     
     #rm(list=ls())
     
-    # S1 <- surveygraphr::gensurvey(200,25)
-    # results <- surveygraphr::exploregraph(S1)
-    # edgelist <- surveygraphr::listgraph(S1)
+    # S1 <- surveygraph::gensurvey(200,25)
+    # results <- surveygraph::exploregraph(S1)
+    # edgelist <- surveygraph::listgraph(S1)
     # g <- igraph::make_graph(edges=edgelist, directed=FALSE)
     # plot(g, vertex.size=5, vertex.label=NA)
     
     polarization <- make_polarization()
+    threshold <- make_threshold_sim()
+    S1 <- surveygraph::make_synthetic_data(nrow=100, ncol=15, polarisation=polarization, minority =0.5)
     
-    S1 <- surveygraphr::generate_survey_polarised(m=300, n=15, polarisation=polarization)
+    if(input$layer1=="agent1")
+    {
+    S1_agent <- make_projection(S1[,-1],
+                                layer = "agent", 
+                                threshold_method = "target_lcc", 
+                                method_value= threshold, 
+                                centre = FALSE)
+    S1_agent_graph <- graph.data.frame(S1_agent , directed=FALSE)
     
-    names1 <- data.frame(id=c(1:length(S1$X1)), group=S1$X1)
-    names2 <- data.frame(id=c(1:length(S1)))
+    girvan_newman <- cluster_edge_betweenness(S1_agent_graph)
     
-    edgelists <- surveygraphr::graph_edgelists(S1)
+    #communities<-cluster_edge_betweenness(S1_agent_graph) 
     
-    g1 <- igraph::graph.data.frame(edgelists[[1]], vertices=names1, directed=FALSE)
-    g2 <- igraph::graph.data.frame(edgelists[[2]], vertices=names2, directed=FALSE)
+    V(S1_agent_graph)$color <- membership(girvan_newman)
     
-    V(g1)$color <- ifelse(V(g1)$group == 1, "blue", "red")
+    plot(#communities,
+      S1_agent_graph, vertex.size = 5, vertex.label = NA, main="respondents"
+    )
+    }
     
-    isolated_nodes1 <- which(degree(g1)==0)
-    isolated_nodes2 <- which(degree(g2)==0)
+    if(input$layer1=="symbolic1")
+    {
+    S1_symbolic <- make_projection(S1[,-1],
+                                   layer = "symbolic", 
+                                   threshold_method = "target_lcc", 
+                                   method_value= threshold, 
+                                   centre = FALSE)
     
-    g1c <- delete.vertices(g1, isolated_nodes1)
-    g2c <- delete.vertices(g2, isolated_nodes2)
+    S1_symbolic_graph <- graph.data.frame(S1_symbolic , directed=FALSE)
     
-    E(g2c)$label= E(g2c)$weight
     
-    par(mfrow=c(1,2), mar=c(1,1,1,1))
-    plot(g1c, vertex.size=2, vertex.label=NA, edge.width=0.2, layout=layout.fruchterman.reingold, main="respondents")
-    plot(g2c, vertex.size=10, edge.width=1.0, layout=layout.fruchterman.reingold, main="items")
     
+    
+    plot(S1_symbolic_graph, vertex.size = 5, vertex.label = NA,main="items")
+    
+    
+    }
+    
+    
+    # 
+    # 
+    # S1 <- surveygraph::make_synthetic_data(m=300, n=15, polarisation=polarization)
+    # 
+    # names1 <- data.frame(id=c(1:length(S1$X1)), group=S1$X1)
+    # names2 <- data.frame(id=c(1:length(S1)))
+    # 
+    # edgelists <- surveygraph::graph_edgelists(S1)
+    # 
+    # g1 <- igraph::graph.data.frame(edgelists[[1]], vertices=names1, directed=FALSE)
+    # g2 <- igraph::graph.data.frame(edgelists[[2]], vertices=names2, directed=FALSE)
+    # 
+    # V(g1)$color <- ifelse(V(g1)$group == 1, "blue", "red")
+    # 
+    # isolated_nodes1 <- which(degree(g1)==0)
+    # isolated_nodes2 <- which(degree(g2)==0)
+    # 
+    # g1c <- delete.vertices(g1, isolated_nodes1)
+    # g2c <- delete.vertices(g2, isolated_nodes2)
+    # 
+    # E(g2c)$label= E(g2c)$weight
+    # 
+    # par(mfrow=c(1,2), mar=c(1,1,1,1))
+    # plot(g1c, vertex.size=2, vertex.label=NA, edge.width=0.2, layout=layout.fruchterman.reingold, main="respondents")
+    # plot(g2c, vertex.size=10, edge.width=1.0, layout=layout.fruchterman.reingold, main="items")
+    # 
     
     
   })
   
   output$code1 <- renderPrint({
-    cat(
-      "S1 <- surveygraphr::generate_survey_polarised(m=300, n=15, polarisation=.5)",
-      "",
-      "names1 <- data.frame(id=c(1:length(S1$X1)), group=S1$X1)",
-      "names2 <- data.frame(id=c(1:length(S1)))",
-      "",
-      "edgelists <- surveygraphr::graph_edgelists(S1)",
-      "",
-      "g1 <- igraph::graph.data.frame(edgelists[[1]], vertices=names1, directed=FALSE)",
-      "g2 <- igraph::graph.data.frame(edgelists[[2]], vertices=names2, directed=FALSE)",
-      "",
-      "V(g1)$color <- ifelse(V(g1)$group == 1, 'blue', 'red')",
-      "",
-      "isolated_nodes1 <- which(degree(g1)==0)",
-      "isolated_nodes2 <- which(degree(g2)==0)",
-      "",
-      "g1c <- delete.vertices(g1, isolated_nodes1)",
-      "g2c <- delete.vertices(g2, isolated_nodes2)",
-      "",
-      "E(g2c)$label= E(g2c)$weight",
-      "",
-      "par(mfrow=c(1,2), mar=c(1,1,1,1))",
-      "plot(g1c, vertex.size=2, vertex.label=NA, edge.width=0.2, layout=layout.fruchterman.reingold, main='respondents'')",
-      "plot(g2c, vertex.size=10, edge.width=1.0, layout=layout.fruchterman.reingold, main='items')",
-      sep="\n"
-    )
+    
+    
+    
+    if(input$layer1=="agent1")
+    {
+      
+      cat(
+        
+        'S1 <- surveygraph::make_synthetic_data(nrow=100, ncol=15, polarisation=polarization, minority =0.5)',
+        
+        'S1_agent <- make_projection(S1[,-1],',
+        '                            layer = "agent", ',
+        '                            threshold_method = "target_lcc", ',
+        '                            method_value= threshold, ',
+        '                            centre = FALSE)',
+        'S1_agent_graph <- graph.data.frame(S1_agent , directed=FALSE)',
+        
+        'girvan_newman <- cluster_edge_betweenness(S1_agent_graph)',
+        
+        'V(S1_agent_graph)$color <- membership(girvan_newman)',
+        
+        'S1_agent_graph, vertex.size = 5, vertex.label = NA, main="respondents")',
+        
+        sep="\n"
+      )
+      
+      
+      
+      
+    }
+    
+    if(input$layer1=="symbolic1")
+    {
+      
+      cat(
+        
+        'S1 <- surveygraph::make_synthetic_data(nrow=100, ncol=15, polarisation=polarization, minority =0.5)',
+        
+        'S1_symbolic <- make_projection(S1[,-1],',
+        '                            layer = "symbolic", ',
+        '                            threshold_method = "target_lcc", ',
+        '                            method_value= threshold, ',
+        '                            centre = FALSE)',
+        'S1_symbolic_graph <- graph.data.frame(S1_agent , directed=FALSE)',
+        
+        'girvan_newman <- cluster_edge_betweenness(S1_symbolic_graph)',
+        
+        'V(S1_symbolic_graph)$color <- membership(girvan_newman)',
+        
+        'plot(S1_symbolic_graph, vertex.size = 5, vertex.label = NA,main="items")',
+        
+        sep="\n"
+      )
+      
+      
+      
+    }
+    
+    
+    
+    
   })
   
   observe(print(get_d()))

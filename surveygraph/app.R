@@ -41,7 +41,7 @@ ui <- dashboardPage(
               fluidRow(
                 box(
                   sliderInput("polarization", "Polarization:",
-                              min = 0, max = 4,
+                              min = 0, max = 1,
                               value = 0.5, step = 0.01),
                   sliderInput("threshold_sim", "Threshold:",
                               min = 0, max = 1,

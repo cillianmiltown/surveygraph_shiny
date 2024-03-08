@@ -25,13 +25,15 @@ plot(g)
 
 plot(g, vertex.size=5, vertex.label=NA)
 
+library(dplyr)
+
+rm(list = ls())
+
+load("../data_with_means.RData")
 
 
-load("data_with_means.RData")
 
-
-
-ICSMP_500 <- sample_n(df,500)
+ICSMP_500 <- dplyr::sample_n(df,500)
 
 variable.names(ICSMP_500)
 
@@ -58,6 +60,13 @@ COVID_measures <- ICSMP_500 %>%
     ,"physical_hygiene_tot"
     ,"policy_support_tot")
 
+
+length(ICSMP_500[,1])
+
+place_holder <- sample(1:7, replace = T, length(ICSMP_500[,1]))
+
+ICSMP_500 <- cbind(place_holder,ICSMP_500)
+ICSMP_500
 
 save(ICSMP_500,COVID_measures, file="ICSMP_500.RData")
 
@@ -183,6 +192,18 @@ head(df)
 
 table(df$cntry)
 
+ESS_500
+
+place_holder <- sample(1:7, replace = T, length(ESS_500[,1]))
+
+ESS_500 <- cbind(place_holder,ESS_500)
+ESS_500
+
+
+place_holder <- sample(1:7, replace = T, length(ESS_GB_500[,1]))
+
+ESS_GB_500 <- cbind(place_holder,ESS_GB_500)
+ESS_GB_500
 
 
 ESS_GB_500 <- dplyr::sample_n(
@@ -545,6 +566,8 @@ plot(#communities,
   S1_agent_graph, vertex.size = 5, vertex.label = NA, main="respondents"
 )
 
+place_holder <- sample(1:7)
 
+length(ESS_500[,1])
 
-
+sample(1:7, replace = T, )

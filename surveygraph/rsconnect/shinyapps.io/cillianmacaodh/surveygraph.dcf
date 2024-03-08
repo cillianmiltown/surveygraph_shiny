@@ -5,9 +5,7 @@ account: cillianmacaodh
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 9071597
-bundleId: 7464846
+bundleId: 8349264
 url: https://cillianmacaodh.shinyapps.io/surveygraph/
-when: 1689583100.23715
-lastSyncTime: 1689583100.23716
 asMultiple: FALSE
 asStatic: FALSE

@@ -65,7 +65,11 @@ ui <- dashboardPage(
                   
                   fileInput("file1", "Upload SPSS File",
                             multiple = TRUE,
-                            accept = c(".sav")),tags$hr(),
+                            accept = c(".sav")),
+                  
+                  fileInput("file2", "Upload CSV File",
+                            multiple = TRUE,
+                            accept = c(".csv")),tags$hr(),
                   
                   h4("Clean up plots"),
                   # checkboxInput("rm_iso1", "Remove Isolated Nodes (respondents)", FALSE
@@ -93,7 +97,8 @@ ui <- dashboardPage(
                                 ICSMP_500 = "ICSMP_500",
                                 ESS_500 = "ESS_500",
                                 ESS_GB_500 = "ESS_GB_500",
-                                uploaded_file = "inFile"), selected=NULL),
+                                uploaded_spss_file = "inFile_spss",
+                                uploaded_csv_file = "inFile_csv"), selected=NULL),
                   # create a dropdown menu for selecting variable 1
                   
                   
@@ -122,7 +127,8 @@ ui <- dashboardPage(
                   # checkboxInput("rm_iso2", "Remove Isolated Nodes (items)", FALSE
                   # ),
                   tags$hr(), 
-                  numericInput("inNumber", "Number of participants for Plot", 100)
+                  numericInput("inNumber", "Number of participants for Plot", 100),
+                  HTML("Please Note: <br> 1. The default sample size to display is 100, if you upload a file with fewer participants you will need to adjust the number of participants before the data will be displayed. <br> 2. Some variables can cause the application to hang, when selecting variables be sure to select variables that are numeric/scale and are not uniform within the dataset.")
                   
                   
                 ),
@@ -146,7 +152,12 @@ ui <- dashboardPage(
 server <- function(input, output, session) {
   
   observeEvent(input$file1,{
-    inFile<<-upload_data()
+    inFile_spss<<-upload_SPSS_data()
+  })
+  
+  
+  observeEvent(input$file2,{
+    inFile_csv<<-upload_CSV_data()
   })
   
   input_counter <- reactiveVal(0)
@@ -210,7 +221,7 @@ server <- function(input, output, session) {
       setdiff(
         names(input),
         c("sidebarCollapsed", "inNumber", "sidebarItemExpanded"
-          , "dataset", "rm","add", "file1"
+          , "dataset", "rm","add", "file1","file2"
           , "polarization"
          # ,"rm_iso1","rm_iso2"
           ,"ess_missing", "threshold_sim", "layer1","threshold_up","layer2")
@@ -289,15 +300,39 @@ server <- function(input, output, session) {
     obj
   })
   
-  upload_data<-reactive({
+  upload_SPSS_data<-reactive({
     
-    inFile <- input$file1
+    inFile_spss <- input$file1
+    #inFile <- input$file1
     
-    if (is.null(inFile))
+    if (is.null(inFile_spss))
       return(NULL)
     
     #could also store in a reactiveValues
-    foreign::read.spss(input$file1$datapath, to.data.frame = TRUE)
+    df_upload <- foreign::read.spss(input$file1$datapath, to.data.frame = TRUE)
+    place_holder <- sample(1:7, replace = T, length(df_upload[,1]))
+    
+    df_upload <- cbind(place_holder,df_upload)
+    df_upload
+    
+    
+  })
+  
+  
+  upload_CSV_data<-reactive({
+    
+    inFile_csv <- input$file2
+    
+    if (is.null(inFile_csv))
+      return(NULL)
+    
+    #could also store in a reactiveValues
+    df_upload <- read.csv(input$file2$datapath) #foreign::read.spss(input$file1$datapath, to.data.frame = TRUE)
+    place_holder <- sample(1:7, replace = T, length(df_upload[,1]))
+    
+    df_upload <- cbind(place_holder,df_upload)
+    df_upload
+    
     
   })
   
@@ -313,7 +348,7 @@ server <- function(input, output, session) {
     
     inputted_variables <- as.vector(unlist(obj[2:(length(d)+1)][1]))
     #rm(d)
-    S <- S %>% select(inputted_variables)
+    S <- S %>% select(all_of(inputted_variables))
     if (
       input$ess_missing==1
     ) 
@@ -362,7 +397,7 @@ server <- function(input, output, session) {
     
     inputted_variables <- as.vector(unlist(obj[2:(length(d)+1)][1]))
     #rm(d)
-    S <- S %>% select(inputted_variables)
+    S <- S %>% select(all_of(inputted_variables))
     
     S[] <- lapply(S, as.numeric)
     
